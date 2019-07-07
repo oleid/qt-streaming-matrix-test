@@ -17,7 +17,7 @@ add_executable(helloworld
     main.cpp
     window.cpp
     mainwindow.cpp
-)
+    glmatrixdraw.h)
 
 target_compile_options(helloworld PRIVATE -Werror -Wextra -Wall)
 

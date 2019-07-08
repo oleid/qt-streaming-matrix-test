@@ -86,8 +86,28 @@ private:
 	void process_upload_queue();
 	bool upload_to_pbo(GLuint pbo_id, int start_row_idx, const std::vector<RowPtr>& data);
 
+	Row maybe_scale_data(Row&& input)
+	{
+		const int N = static_cast<int>(input.size());
+		if (N != tex_width)
+		{
+			const int factor = std::round(N / tex_width);
+			assert(factor > 0);
+			auto cmp = [](auto a, auto b) -> bool { return (std::abs(a) < std::abs(b)); };
+			for (int i = 0; i < N; i += factor)
+			{
+				const auto max = std::max_element(input.begin() + i, input.begin() + i + factor, cmp);
+				input[i / factor] = *max;
+			}
+			input.resize(input.size() / factor);
+			assert(N == tex_width);
+		}
+		return input;
+	}
+
 	int tex_width;
 	int tex_height;
+	int input_data_len;
 
 	QOpenGLVertexArrayObject m_vao;
 	std::unique_ptr<QOpenGLShaderProgram> m_program;
@@ -143,6 +163,7 @@ GlMatrixDraw<T>::GlMatrixDraw(size_t rows, size_t cols)
 	: is_radar_plot(false)
 	, tex_width(cols)
 	, tex_height(rows)
+	, input_data_len(tex_width)
 	, upload_idx(1)
 	, copy_idx(0)
 	, upload_time(0.0)
@@ -166,8 +187,8 @@ bool GlMatrixDraw<T>::insert(int pos, Row input)
 	{
 		return false;
 	}
-	assert(input.size() == static_cast<size_t>(tex_width));
-	auto input_ptr = std::make_shared<Row>(std::move(input));
+	assert(input.size() == static_cast<size_t>(input_data_len));
+	auto input_ptr = std::make_shared<Row>(maybe_scale_data(std::move(input)));
 
 	using QEntry = typename UploadQueue::Entry;
 	input_qs[0].input_q.enqueue(QEntry{append_pos, input_ptr});
@@ -216,6 +237,18 @@ void GlMatrixDraw<T>::initializeGL()
 	// the signal will be followed by an invocation of initializeGL() where we
 	// can recreate all resources.
 	initializeOpenGLFunctions();
+
+	// If your matrix is huge _or_ your GPU really old, data might not fit. Check.
+	GLint max_texture_size;
+	glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size);
+
+	tex_height = std::min(tex_height, max_texture_size); // row count is flexible
+
+	if (tex_width > max_texture_size)
+	{
+		// Choose texture with so that scaling input data is an integer factor
+		tex_width = std::floor(input_data_len / std::round(input_data_len / max_texture_size));
+	}
 
 	glClearColor(0, 0, 0, 1);
 

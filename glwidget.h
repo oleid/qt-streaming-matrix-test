@@ -6,7 +6,7 @@
 
 #include "glmatrixdraw.h"
 
-class GLWidget : public QOpenGLWidget, public GlMatrixDraw<float>
+class GLWidget : public QOpenGLWidget, public GlMatrixDraw<std::complex<float>>
 {
 	Q_OBJECT
 

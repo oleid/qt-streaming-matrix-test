@@ -63,10 +63,14 @@
 
 #include <random>
 
+#if defined(_POSIX_VERSION)
+#include <pthread.h>
+#endif
+
 Window::Window(MainWindow* mw)
 	: mainWindow(mw)
 {
-	glWidget = new GLWidget(360, 2000);
+	glWidget = new GLWidget(360, 32768);
 
 	xSlider = createSlider();
 	ySlider = createSlider();
@@ -177,23 +181,30 @@ void Window::MockDataSource::operator()()
 {
 	using namespace std::chrono_literals;
 	using namespace std::chrono;
-	using T = float;
+	using T = std::complex<float>;
+
+#if defined(_POSIX_VERSION)
+	pthread_setname_np(pthread_self(), "DataGen");
+#endif
 
 	const auto target_dps = 1200;
 	const auto max_sleep_time = nanoseconds(1000000000 / target_dps);
+	const int N = 32768;
+	const float scaling = 10.0f / N;
 
 	std::default_random_engine generator;
 	std::uniform_real_distribution<float> distribution(-1.0, 1.0);
-	float pos = 1000.f;
+	float pos = static_cast<float>(N) / 2.0;
 	while (true)
 	{
 		auto start = steady_clock::now();
-		pos += 8.0 * distribution(generator);
+		pos += 1e-3 * N * distribution(generator);
 
-		std::vector<T> v(2000, 0.0f);
-		for (int i = std::max(0, int(pos - 40)); i < std::min(2000, int(pos + 40)); i++)
+		std::vector<T> v(N, 0.0f);
+		for (int i = std::max(0, int(pos - 60)); i < std::min(N, int(pos + 60)); i++)
 		{
-			v[i] = exp(-(i - pos) * (i - pos) / 100.0);
+			const auto intensity = exp(-(i - pos) * (i - pos) * scaling);
+			v[i] = (std::abs(intensity) > 1e-4) ? intensity : T(0);
 		}
 		w->append(v);
 

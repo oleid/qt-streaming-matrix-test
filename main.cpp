@@ -57,7 +57,8 @@
 #include "glwidget.h"
 #include "mainwindow.h"
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[])
+{
 	QApplication app(argc, argv);
 
 	QCoreApplication::setApplicationName("Matrix widget");
@@ -67,11 +68,14 @@ int main(int argc, char *argv[]) {
 	fmt.setDepthBufferSize(24);
 
 	// Request OpenGL 3.3 core or OpenGL ES 3.0.
-	if (QOpenGLContext::openGLModuleType() == QOpenGLContext::LibGL) {
+	if (QOpenGLContext::openGLModuleType() == QOpenGLContext::LibGL)
+	{
 		qDebug("Requesting 3.3 core context");
 		fmt.setVersion(3, 3);
 		fmt.setProfile(QSurfaceFormat::CoreProfile);
-	} else {
+	}
+	else
+	{
 		qDebug("Requesting 3.0 context");
 		fmt.setVersion(3, 0);
 	}
@@ -81,8 +85,7 @@ int main(int argc, char *argv[]) {
 
 	MainWindow mainWindow;
 	mainWindow.resize(mainWindow.sizeHint());
-	int desktopArea =
-		QApplication::desktop()->width() * QApplication::desktop()->height();
+	int desktopArea = QApplication::desktop()->width() * QApplication::desktop()->height();
 	int widgetArea = mainWindow.width() * mainWindow.height();
 	if (((float)widgetArea / (float)desktopArea) < 0.75f)
 		mainWindow.show();

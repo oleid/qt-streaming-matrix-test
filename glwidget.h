@@ -13,7 +13,7 @@ class GLWidget : public QOpenGLWidget, public GlMatrixDraw<float>
 public:
 	GLWidget(size_t rows, size_t cols, QWidget* parent = 0)
 		: QOpenGLWidget(parent)
-		, GlMatrixDraw<float>(rows, cols)
+		, GlMatrixDraw<Float>(rows, cols)
 	{
 	}
 
@@ -25,7 +25,7 @@ public:
 	void initializeGL() override
 	{
 		connect(context(), &QOpenGLContext::aboutToBeDestroyed, this, &GLWidget::cleanup);
-		GlMatrixDraw<float>::initializeGL();
+		GlMatrixDraw<Float>::initializeGL();
 
 		if (context()->hasExtension(QByteArrayLiteral("GL_KHR_debug")))
 		{

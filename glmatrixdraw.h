@@ -14,13 +14,45 @@
 #include <iostream>
 #include <memory>
 
+#include <complex>
 #include <lockfree_q/readerwriterqueue.h>
 
+namespace detail
+{
+template <typename T>
+struct texConf
+{
+};
+
+template <>
+struct texConf<float>
+{
+	using gl_type = GLfloat;
+	static constexpr GLuint type_size = sizeof(gl_type);
+	static constexpr GLuint internalformat = GL_R32F;
+	static constexpr GLuint format = GL_RED;
+	static constexpr GLuint _type = GL_FLOAT;
+};
+
+template <>
+struct texConf<std::complex<float>>
+{
+	using gl_type = GLfloat[2];
+	static constexpr GLuint type_size = sizeof(gl_type);
+	static constexpr GLuint internalformat = GL_RG32F;
+	static constexpr GLuint format = GL_RG;
+	static constexpr GLuint _type = GL_FLOAT;
+};
+
+} // namespace detail
 QT_FORWARD_DECLARE_CLASS(QOpenGLShaderProgram)
 
 template <typename T>
 class GlMatrixDraw : protected QOpenGLExtraFunctions
 {
+protected:
+	using Float = T;
+
 public:
 	using Row = std::vector<T>;
 	using RowPtr = std::shared_ptr<Row>;
@@ -211,7 +243,7 @@ void GlMatrixDraw<T>::initializeGL()
 template <typename T>
 void GlMatrixDraw<T>::initBuffers()
 {
-	const size_t DATA_SIZE = dataCount() * sizeof(GLfloat);
+	const size_t DATA_SIZE = dataCount() * detail::texConf<T>::type_size;
 	for (auto& el : input_qs)
 	{
 		glGenBuffers(1, &el.pbo_id);
@@ -280,7 +312,15 @@ void GlMatrixDraw<T>::initTexture()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, tex_width, tex_height, 0, GL_RED, GL_FLOAT, nullptr);
+	glTexImage2D(GL_TEXTURE_2D,
+			0,
+			detail::texConf<T>::internalformat,
+			tex_width,
+			tex_height,
+			0,
+			detail::texConf<T>::format,
+			detail::texConf<T>::_type,
+			nullptr);
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
@@ -292,7 +332,8 @@ void GlMatrixDraw<T>::copy_frontbuffer_to_texture()
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, input_qs[copy_idx].pbo_id);
 
 	// copy pixels from PBO to texture object
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_width, tex_height, GL_RED, GL_FLOAT, 0);
+	glTexSubImage2D(
+			GL_TEXTURE_2D, 0, 0, 0, tex_width, tex_height, detail::texConf<T>::format, detail::texConf<T>::_type, 0);
 }
 
 template <typename T>
@@ -343,7 +384,7 @@ void GlMatrixDraw<T>::process_upload_queue()
 template <typename T>
 bool GlMatrixDraw<T>::upload_to_pbo(GLuint pbo_id, int start_row_idx, const std::vector<RowPtr>& data)
 {
-	const size_t row_bytes = tex_width * sizeof(T);
+	const size_t row_bytes = tex_width * detail::texConf<T>::type_size;
 	const size_t start_byte_offset = start_row_idx * row_bytes;
 	const size_t upload_size = data.size() * row_bytes;
 
@@ -351,14 +392,15 @@ bool GlMatrixDraw<T>::upload_to_pbo(GLuint pbo_id, int start_row_idx, const std:
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_id);
 
 	// map the buffer object into client's memory
-	auto* ptr = (GLfloat*)glMapBufferRange(GL_PIXEL_UNPACK_BUFFER, start_byte_offset, upload_size, GL_MAP_WRITE_BIT);
+	// note: using char* here, to get one byte increments when adding pointers below
+	auto* ptr = (char*)glMapBufferRange(GL_PIXEL_UNPACK_BUFFER, start_byte_offset, upload_size, GL_MAP_WRITE_BIT);
 	if (ptr)
 	{
 		for (size_t i = 0; i < data.size(); i++)
 		{
 			const Row& row = *data[i];
 			assert(row.size() >= static_cast<size_t>(tex_width));
-			memcpy(ptr + i * tex_width, row.data(), row_bytes);
+			memcpy(ptr + i * tex_width * detail::texConf<T>::type_size, row.data(), row_bytes);
 		}
 		glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER); // release pointer to mapping buffer
 		return true;

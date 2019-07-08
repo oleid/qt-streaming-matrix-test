@@ -177,6 +177,7 @@ void Window::MockDataSource::operator()()
 {
 	using namespace std::chrono_literals;
 	using namespace std::chrono;
+	using T = float;
 
 	const auto target_dps = 1200;
 	const auto max_sleep_time = nanoseconds(1000000000 / target_dps);
@@ -189,7 +190,7 @@ void Window::MockDataSource::operator()()
 		auto start = steady_clock::now();
 		pos += 8.0 * distribution(generator);
 
-		std::vector<float> v(2000, 0.0f);
+		std::vector<T> v(2000, 0.0f);
 		for (int i = std::max(0, int(pos - 40)); i < std::min(2000, int(pos + 40)); i++)
 		{
 			v[i] = exp(-(i - pos) * (i - pos) / 100.0);

@@ -6,14 +6,14 @@
 
 #include "glmatrixdraw.h"
 
-class GLWidget : public QOpenGLWidget, public GlMatrixDraw<std::complex<float>>
+class GLWidget : public QOpenGLWidget, public GlMatrixDraw
 {
 	Q_OBJECT
 
 public:
-	GLWidget(size_t rows, size_t cols, QWidget* parent = 0)
+	GLWidget(size_t rows, size_t cols, detail::texConf config, QWidget* parent = 0)
 		: QOpenGLWidget(parent)
-		, GlMatrixDraw<Float>(rows, cols)
+		, GlMatrixDraw(rows, cols, config)
 	{
 	}
 
@@ -25,7 +25,7 @@ public:
 	void initializeGL() override
 	{
 		connect(context(), &QOpenGLContext::aboutToBeDestroyed, this, &GLWidget::cleanup);
-		GlMatrixDraw<Float>::initializeGL();
+		GlMatrixDraw::initializeGL();
 
 		if (context()->hasExtension(QByteArrayLiteral("GL_KHR_debug")))
 		{

@@ -70,7 +70,7 @@
 Window::Window(MainWindow* mw)
 	: mainWindow(mw)
 {
-	glWidget = new GLWidget(360, 32768);
+	glWidget = new GLWidget(360, 32768, detail::texConf(std::complex<float>()));
 
 	xSlider = createSlider();
 	ySlider = createSlider();
@@ -181,7 +181,6 @@ void Window::MockDataSource::operator()()
 {
 	using namespace std::chrono_literals;
 	using namespace std::chrono;
-	using T = std::complex<float>;
 
 #if defined(_POSIX_VERSION)
 	pthread_setname_np(pthread_self(), "DataGen");
@@ -200,13 +199,15 @@ void Window::MockDataSource::operator()()
 		auto start = steady_clock::now();
 		pos += 1e-3 * N * distribution(generator);
 
-		std::vector<T> v(N, 0.0f);
+		std::vector<float> input(2 * N, 0.0f);
+		auto& v = *reinterpret_cast<std::vector<std::complex<float>>*>(&input);
+
 		for (int i = std::max(0, int(pos - 60)); i < std::min(N, int(pos + 60)); i++)
 		{
 			const auto intensity = exp(-(i - pos) * (i - pos) * scaling);
 			v[i] = (std::abs(intensity) > 1e-4) ? intensity : T(0);
 		}
-		w->append(v);
+		w->append(input);
 
 		if (++n_count % 10000 == 0)
 		{

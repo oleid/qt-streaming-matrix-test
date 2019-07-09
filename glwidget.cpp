@@ -8,7 +8,7 @@ void GLWidget::cleanup()
 {
 	makeCurrent();
 
-	GlMatrixDraw<Float>::cleanup();
+	GlMatrixDraw::cleanup();
 
 	doneCurrent();
 }
